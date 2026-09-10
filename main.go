@@ -3,7 +3,10 @@ package main
 import (
 	"cablenet/transcode"
 	"fmt"
+	"time"
 )
+
+var terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
 
 func main() {
 	// temporary encode string
@@ -36,7 +39,7 @@ func main() {
 
 		if cmd == "q" {
 			// stop feed
-			stopErr := transcode.StopFeed(feed, 500000000)
+			stopErr := transcode.StopFeed(feed, terminateTimeoutMil)
 			fmt.Println("Stopped feed with code ", stopErr)
 
 			fmt.Println("Goodbye!")
