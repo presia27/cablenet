@@ -2,6 +2,7 @@ package transcode
 
 import (
 	"log"
+	"os"
 	"os/exec"
 	"syscall"
 	"time"
@@ -18,6 +19,7 @@ type Feed struct {
 func StartFeed (args ...string) (*Feed, error) {
 	cmd := exec.Command("ffmpeg", args...)
 
+	cmd.Stderr = os.Stderr
 	err := cmd.Start()
 
 	if err != nil {

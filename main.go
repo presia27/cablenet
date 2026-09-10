@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cablenet/transcode"
 	"fmt"
 )
 
@@ -23,6 +24,8 @@ func main() {
 
 	fmt.Println(encodeString)
 
+	feed, _ := transcode.StartFeed(encodeString...)
+
 	// input loop for testing
 	var cmd string;
 	for {
@@ -32,11 +35,14 @@ func main() {
 		fmt.Println("Executing ", cmd)
 
 		if cmd == "q" {
+			// stop feed
+			stopErr := transcode.StopFeed(feed, 500000000)
+			fmt.Println("Stopped feed with code ", stopErr)
+
 			fmt.Println("Goodbye!")
 			break
 		}
 	}
 	
-	//transcode.StartFeed(encodeString...)
 }
 
