@@ -27,14 +27,12 @@ go.work.sum
 # env file
 .env
 
-setlib
-
 .DS_Store
 tmp/
 
 server.log
 
 # Large multimedia files
-.mp4
-.mkv
-.m2ts
+*.mp4
+*.mkv
+*.m2ts
