@@ -17,8 +17,8 @@ var ffparams utilities.FFoptions				// default ffmpeg options
 
 var streamdata []StreamState						// metadata and reference to the process transcoding an active feed
 
-func main() {
-	// load feeds
+func loadStreams() {
+// load feeds
 	var streamListParsed []utilities.StreamList
 	utilities.LoadJsonFile("feeds.json", &streamListParsed)
 	fmt.Println("\nStream Metadata: \n", utilities.GetStreamListInfo(streamListParsed))
@@ -31,11 +31,15 @@ func main() {
 		}
 		streamdata = append(streamdata, sd)
 	}
+}
 
+func main() {
+	loadStreams()
 
 	// load ffmpeg default params
 	utilities.LoadJsonFile("ffmpegconf.json", &ffparams)
 
+	// testing
 	ffstring, err := utilities.BuildFFparams(streamdata[0].metadata, ffparams)
 	if err != nil {
 		fmt.Println(err)
