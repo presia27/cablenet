@@ -36,3 +36,6 @@ server.log
 *.mp4
 *.mkv
 *.m2ts
+
+# Logs
+log/
