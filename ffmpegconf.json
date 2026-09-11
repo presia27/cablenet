@@ -1,0 +1,11 @@
+{
+  "vcodec": "libx264",
+  "vprofile": "main",
+  "preset": "veryfast",
+  "defaultvbitratekb": 2048,
+  "pixfmt": "yuv420p",
+  "colorfmt": "bt709",
+  "colorrange": "tv",
+  "acodec": "aac",
+  "defaultabitratekb": 384
+}
