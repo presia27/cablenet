@@ -7,12 +7,14 @@ import (
 	"time"
 )
 
+// Information on stream metadata and the transcoding process
+// A nil transcoder means that the feed is not active (no transcoding process running)
 type StreamState struct {
 	metadata			utilities.StreamList
 	transcoder		*transcode.Feed
 }
 
-var terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
+const terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
 var ffparams utilities.FFoptions				// default ffmpeg options
 
 var streamdata []StreamState						// metadata and reference to the process transcoding an active feed
@@ -33,6 +35,48 @@ func loadStreams() {
 	}
 }
 
+// Start a feed by beginning the transcoding process and attaching the transcode feed struct
+// to the StreamState
+func startStream(s *StreamState) error {
+	if s.transcoder != nil {
+		return fmt.Errorf("Stream %d %s already started. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
+	}
+
+	if !s.metadata.Enabled {
+		return fmt.Errorf("Stream %d %s is disabled and cannot be started.", s.metadata.ChannelNum, s.metadata.Name)
+	}
+
+	// build ffmpeg command
+	ffstring, err := utilities.BuildFFparams(s.metadata, ffparams)
+	if err != nil {
+		return err
+	}
+
+	feed, err := transcode.StartFeed(ffstring...)
+	if err != nil {
+		return err
+	}
+
+	// Set transcoder struct field to active feed
+	s.transcoder = feed
+
+	return nil
+}
+
+// Stop a running feed by stopping the transcoding process and removing the transcode feed struct
+func stopStream(s *StreamState) error {
+	if s.transcoder == nil {
+		return fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
+	}
+
+	err := transcode.StopFeed(s.transcoder, terminateTimeoutMil)
+	fmt.Println("Stopped feed with code ", err)
+
+	s.transcoder = nil
+
+	return nil
+}
+
 func main() {
 	loadStreams()
 
@@ -40,16 +84,11 @@ func main() {
 	utilities.LoadJsonFile("ffmpegconf.json", &ffparams)
 
 	// testing
-	ffstring, err := utilities.BuildFFparams(streamdata[0].metadata, ffparams)
+	err := startStream(&streamdata[0])
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	feed, err := transcode.StartFeed(ffstring...)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	streamdata[0].transcoder = feed
+	fmt.Println(streamdata)
 
 	// input loop for testing
 	var cmd string;

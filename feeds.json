@@ -1,11 +1,11 @@
 [
   {
     "channel_num": 1,
-    "channel_display": "4.1",
-    "name": "KOMO-TV",
-    "network": "ABC",
+    "channel_display": "16.1",
+    "name": "KONG-TV",
+    "network": "IND",
     "icon_img": "",
-    "owner": "Sinclair Broadcast Group",
+    "owner": "TEGNA",
     "feed_url": "./KONG-HD_Harborstone_Junior_Achievement_emailquality.mp4",
     "epg_url": "",
     "enabled": true,
