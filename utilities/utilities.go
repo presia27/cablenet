@@ -88,70 +88,68 @@ func GetStreamListInfo(streams []StreamList) string {
 	return sb.String()
 }
 
-func BuildFFstring(s StreamList, f FFoptions) (string, error) {
+func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 	// Check that required fields are filled in
 	if s.FeedUrl == "" {
-		return "", errors.New("Input path or URL is missing. Unable to build FFmpeg command string.")
+		return nil, errors.New("Input path or URL is missing. Unable to build FFmpeg command string.")
 	}
 
-	var sb strings.Builder
+	var params []string
 
 	// Determine overwrite
 	if s.Overwrite {
-		sb.WriteString("-y ")
+		params = append(params, "-y")
 	} else {
-		sb.WriteString("-n ")
+		params = append(params, "-n")
 	}
 
 	// Write input feed location
-	sb.WriteString("-i ")
-	sb.WriteString(s.FeedUrl)
+	params = append(params, "-i")
+	params = append(params, s.FeedUrl)
 
 	// >>Handle custom ffmpeg options per stream at a later date<<
 
 	// Video codec info
-	sb.WriteString(" -c:v ")
-	sb.WriteString(f.Vcodec)
-	sb.WriteString(" -profile:v ")
-	sb.WriteString(f.Vprofile)
-	sb.WriteString(" -preset ")
-	sb.WriteString(f.Preset)
+	params = append(params, "-c:v")
+	params = append(params, f.Vcodec)
+	params = append(params, "-profile:v")
+	params = append(params, f.Vprofile)
+	params = append(params, "-preset")
+	params = append(params, f.Preset)
 
-	sb.WriteString(" -b:v ")
+	params = append(params, "-b:v")
 	var vbitrate int
 	if s.Vbitrate > 0 {
 		vbitrate = s.Vbitrate
 	} else {
 		vbitrate = f.DefaultVBitrate
 	}
-	sb.WriteString(strconv.Itoa(vbitrate))
-	sb.WriteString("k")
+	params = append(params, strconv.Itoa(vbitrate) + "k")
 
-	sb.WriteString(" -pix_fmt ")
-	sb.WriteString(f.PixFmt)
-	sb.WriteString(" -colorspace ")
-	sb.WriteString(f.ColorFmt)
-	sb.WriteString(" -color_primaries ")
-	sb.WriteString(f.ColorFmt)
-	sb.WriteString(" -color_trc ")
-	sb.WriteString(f.ColorFmt)
-	sb.WriteString( " -color_range" )
-	sb.WriteString(f.ColorRange)
+	params = append(params, "-pix_fmt")
+	params = append(params, f.PixFmt)
+	params = append(params, "-colorspace")
+	params = append(params, f.ColorFmt)
+	params = append(params, "-color_primaries")
+	params = append(params, f.ColorFmt)
+	params = append(params, "-color_trc")
+	params = append(params, f.ColorFmt)
+	params = append(params,  "-color_range" )
+	params = append(params, f.ColorRange)
 
-	sb.WriteString(" -c:a ")
-	sb.WriteString(f.Acodec)
-	sb.WriteString(" -b:a ")
+	params = append(params, "-c:a")
+	params = append(params, f.Acodec)
+	params = append(params, "-b:a")
 	var abitrate int
 	if s.Abitrate > 0 {
 		abitrate = s.Abitrate
 	} else {
 		abitrate = f.DefaultABitrate
 	}
-	sb.WriteString(strconv.Itoa(abitrate))
-	sb.WriteString("k")
+	params = append(params, strconv.Itoa(abitrate) + "k")
 
 	// Output (fix for proper output later)
-	fmt.Fprintf(&sb, " stream-ch%d-%s.mp4", s.ChannelNum, s.Name)
+	params = append(params, fmt.Sprintf("stream-ch%d-%s.mp4", s.ChannelNum, s.Name))
 
-	return sb.String(), nil
+	return params, nil
 }
