@@ -1,6 +1,7 @@
 package transcode
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"syscall"
@@ -15,12 +16,20 @@ type Feed struct {
 
 	/* Process exit status */
 	done		chan error
+
+	/* Logger */
+	logger *lumberjack.Logger
 }
 
-func StartFeed (args ...string) (*Feed, error) {
+const logPath string = "./log/ffmpeg/"
+
+// streamid - provide a unique id number to identify the stream (mostly for logging purposes).
+// args - ffmpeg transcoding arguments.
+func StartFeed (streamid int, args ...string) (*Feed, error) {
+	logName := fmt.Sprintf("transcode_stream%d.log", streamid)
 	fflogger := &lumberjack.Logger{
-		Filename:		"./log/ffmpeg/transcode.log",
-		MaxSize:		50,		// mbps before rotating
+		Filename:		logPath + logName,
+		MaxSize:		25,		// mbps before rotating
 		MaxBackups:	10,		// number of old files to keep
 		MaxAge:			14,		// days
 		Compress:		true,	// gzip rotated files
@@ -36,7 +45,8 @@ func StartFeed (args ...string) (*Feed, error) {
 	err := cmd.Start()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		fflogger.Close()
 		return nil, err
 	}
 	log.Println("Started ffmpeg process")
@@ -50,6 +60,7 @@ func StartFeed (args ...string) (*Feed, error) {
 	feed := Feed{
 		proc: cmd,
 		done: done,
+		logger: fflogger,
 	}
 
 	return &feed, nil
@@ -58,11 +69,18 @@ func StartFeed (args ...string) (*Feed, error) {
 func StopFeed(feed *Feed, timeout time.Duration) error {
 	feed.proc.Process.Signal(syscall.SIGTERM)
 
+	var waitErr error
 	select {
-	case err := <-feed.done:
-		return err
+	case waitErr = <-feed.done:
+		// receive status from channel and store
 	case <-time.After(timeout): // force kill after timeout
 		feed.proc.Process.Kill()
-		return <-feed.done
+		waitErr = <-feed.done
 	}
+
+	if err := feed.logger.Close(); err != nil {
+		log.Println("Error closing feed logger: ", err)
+	}
+
+	return waitErr
 }

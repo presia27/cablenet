@@ -53,7 +53,7 @@ func startStream(s *StreamState) error {
 		return err
 	}
 
-	feed, err := transcode.StartFeed(ffstring...)
+	feed, err := transcode.StartFeed(s.metadata.ChannelNum, ffstring...)
 	if err != nil {
 		return err
 	}
