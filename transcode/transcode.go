@@ -2,10 +2,11 @@ package transcode
 
 import (
 	"log"
-	"os"
 	"os/exec"
 	"syscall"
 	"time"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type Feed struct {
@@ -17,9 +18,21 @@ type Feed struct {
 }
 
 func StartFeed (args ...string) (*Feed, error) {
+	fflogger := &lumberjack.Logger{
+		Filename:		"./log/ffmpeg/transcode.log",
+		MaxSize:		50,		// mbps before rotating
+		MaxBackups:	10,		// number of old files to keep
+		MaxAge:			14,		// days
+		Compress:		true,	// gzip rotated files
+	}
+	defer fflogger.Close()
+	
 	cmd := exec.Command("ffmpeg", args...)
 
-	cmd.Stderr = os.Stderr
+	// Direct ffmpeg progress output
+	cmd.Stderr = fflogger
+
+	// Start process
 	err := cmd.Start()
 
 	if err != nil {

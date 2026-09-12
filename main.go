@@ -17,7 +17,7 @@ type StreamState struct {
 const terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
 var ffparams utilities.FFoptions				// default ffmpeg options
 
-var streamdata []StreamState						// metadata and reference to the process transcoding an active feed
+var streamdata []*StreamState						// metadata and reference to the process transcoding an active feed
 
 func loadStreams() {
 // load feeds
@@ -31,7 +31,7 @@ func loadStreams() {
 			metadata: f,
 			transcoder: nil,
 		}
-		streamdata = append(streamdata, sd)
+		streamdata = append(streamdata, &sd)
 	}
 }
 
@@ -77,18 +77,34 @@ func stopStream(s *StreamState) error {
 	return nil
 }
 
+func stopAllStreams() {
+	for _, f := range streamdata {
+		if f.transcoder != nil {
+			err := stopStream(f)
+			if err != nil {
+				fmt.Println("Error while stopping feed: ", err)
+			}
+		}
+	}
+}
+
 func main() {
 	loadStreams()
 
 	// load ffmpeg default params
 	utilities.LoadJsonFile("ffmpegconf.json", &ffparams)
 
-	// testing
-	err := startStream(&streamdata[0])
-	if err != nil {
-		fmt.Println(err)
+	for i := 0; i < len(streamdata); i++ {
+		if streamdata[i].metadata.Enabled && streamdata[i].metadata.AutostartEncode {
+			err := startStream(streamdata[i])
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 	}
-	fmt.Println(streamdata)
+	for _, x := range streamdata {
+		fmt.Println("\n", x)
+	}
 
 	// input loop for testing
 	var cmd string;
@@ -100,8 +116,7 @@ func main() {
 
 		if cmd == "x" {
 			// stop feed
-			stopErr := transcode.StopFeed(streamdata[0].transcoder, terminateTimeoutMil)
-			fmt.Println("Stopped feed with code ", stopErr)
+			stopAllStreams()
 
 			fmt.Println("Goodbye!")
 			break
