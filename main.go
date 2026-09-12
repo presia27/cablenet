@@ -4,6 +4,7 @@ import (
 	"cablenet/transcode"
 	"cablenet/utilities"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -23,7 +24,7 @@ func loadStreams() {
 // load feeds
 	var streamListParsed []utilities.StreamList
 	utilities.LoadJsonFile("feeds.json", &streamListParsed)
-	fmt.Println("\nStream Metadata: \n", utilities.GetStreamListInfo(streamListParsed))
+	//fmt.Println("\nStream Metadata: \n", utilities.GetStreamListInfo(streamListParsed))
 
 	// add feed to managed list of feeds
 	for _, f := range streamListParsed {
@@ -70,7 +71,7 @@ func stopStream(s *StreamState) error {
 	}
 
 	err := transcode.StopFeed(s.transcoder, terminateTimeoutMil)
-	fmt.Println("Stopped feed with code ", err)
+	log.Println("Stopped feed with code ", err)
 
 	s.transcoder = nil
 
@@ -82,7 +83,7 @@ func stopAllStreams() {
 		if f.transcoder != nil {
 			err := stopStream(f)
 			if err != nil {
-				fmt.Println("Error while stopping feed: ", err)
+				log.Println("Error while stopping feed: ", err)
 			}
 		}
 	}
@@ -98,12 +99,9 @@ func main() {
 		if streamdata[i].metadata.Enabled && streamdata[i].metadata.AutostartEncode {
 			err := startStream(streamdata[i])
 			if err != nil {
-				fmt.Println(err)
+				log.Println("Error starting stream: ", err)
 			}
 		}
-	}
-	for _, x := range streamdata {
-		fmt.Println("\n", x)
 	}
 
 	// input loop for testing

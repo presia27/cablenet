@@ -1,23 +1,6 @@
 [
   {
     "channel_num": 1,
-    "channel_display": "16.1",
-    "name": "KONG-TV",
-    "network": "IND",
-    "icon_img": "",
-    "owner": "TEGNA",
-    "feed_url": "./KONG-HD_Harborstone_Junior_Achievement_emailquality.mp4",
-    "epg_url": "",
-    "enabled": true,
-    "overwrite": true,
-    "vbitrate_kb": 2000,
-    "abitrate_kb": 256,
-    "deinterlace": false,
-    "autostart_encode": true,
-    "ffmpeg_options": {}
-  },
-  {
-    "channel_num": 2,
     "channel_display": "5.1",
     "name": "KING-TV",
     "network": "NBC",
@@ -30,6 +13,23 @@
     "vbitrate_kb": 3072,
     "abitrate_kb": 256,
     "deinterlace": true,
+    "autostart_encode": true,
+    "ffmpeg_options": {}
+  },
+  {
+    "channel_num": 2,
+    "channel_display": "16.1",
+    "name": "KONG-TV",
+    "network": "IND",
+    "icon_img": "",
+    "owner": "TEGNA",
+    "feed_url": "./KONG-HD_Harborstone_Junior_Achievement_emailquality.mp4",
+    "epg_url": "",
+    "enabled": true,
+    "overwrite": true,
+    "vbitrate_kb": 2000,
+    "abitrate_kb": 256,
+    "deinterlace": false,
     "autostart_encode": true,
     "ffmpeg_options": {}
   }

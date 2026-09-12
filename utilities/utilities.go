@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -46,24 +47,24 @@ func LoadJsonFile(f string, d any) {
 	jsonFile, err := os.Open(f)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	defer jsonFile.Close()
 
 	jsonByteArr, err := io.ReadAll(jsonFile)
 	if err != nil {
-		fmt.Println("Error reading file: ", err)
+		log.Println("Error reading file: ", err)
 		return
 	}
 
 	err = json.Unmarshal(jsonByteArr, d)
 	if err != nil {
-		fmt.Println("Error unmarshalling JSON: ", err)
+		log.Println("Error unmarshalling JSON: ", err)
  		return
 	}
 
-	fmt.Println("Loaded ", f)
+	log.Println("Loaded ", f)
 }
 
 func GetStreamListInfo(streams []StreamList) string {
