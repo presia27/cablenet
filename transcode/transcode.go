@@ -75,6 +75,7 @@ func StopFeed(feed *Feed, timeout time.Duration) error {
 		// receive status from channel and store
 	case <-time.After(timeout): // force kill after timeout
 		feed.proc.Process.Kill()
+		log.Println("Warning: Unresponsive transcode process killed")
 		waitErr = <-feed.done
 	}
 

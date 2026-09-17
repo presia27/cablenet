@@ -5,6 +5,9 @@ import (
 	"cablenet/utilities"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -105,21 +108,34 @@ func main() {
 	}
 
 	// input loop for testing
-	var cmd string;
-	for {
-		fmt.Println("\nCablenet // Press x to exit")
-		fmt.Print("Enter command: ")
-		fmt.Scan(&cmd)
-		fmt.Println("Executing ", cmd)
+	// var cmd string;
+	// for {
+	// 	fmt.Println("\nCablenet // Press x to exit")
+	// 	fmt.Print("Enter command: ")
+	// 	fmt.Scan(&cmd)
+	// 	fmt.Println("Executing ", cmd)
 
-		if cmd == "x" {
-			// stop feed
-			stopAllStreams()
+	// 	if cmd == "x" {
+	// 		// stop feed
+	// 		stopAllStreams()
 
-			fmt.Println("Goodbye!")
-			break
-		}
-	}
+	// 		fmt.Println("Goodbye!")
+	// 		break
+	// 	}
+	// }
+
+	fmt.Println("\n/// Cablenet ///")
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
+
+	<- sig
+	// Shutdown procedure
+	fmt.Println("Shutting down streams...")
+	time.Sleep(200 * time.Millisecond) // sleep to avoid ffmpeg immediate exit from multiple interrupts
+	stopAllStreams()
+
+	fmt.Println("Goodbye!")
 	
 }
 
