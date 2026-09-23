@@ -14,14 +14,21 @@ type Feed struct {
 	/* Reference to the running process */
 	proc		*exec.Cmd
 
-	/* Process exit status */
+	/* Exit status of the process itself */
 	done		chan error
+
+	/* Additional status indicator after the process exits; channel closes when termination is complete */
+	stopped chan struct{}
+
+	/* Flag indicating that the feed should be stopped normally */
+	voluntaryStop chan bool
 
 	/* Logger */
 	logger *lumberjack.Logger
 }
 
 const logPath string = "./log/ffmpeg/"
+const terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
 
 // streamid - provide a unique id number to identify the stream (mostly for logging purposes).
 // args - ffmpeg transcoding arguments.
@@ -34,9 +41,11 @@ func StartFeed (streamid int, args ...string) (*Feed, error) {
 		MaxAge:			14,		// days
 		Compress:		true,	// gzip rotated files
 	}
-	defer fflogger.Close()
 	
 	cmd := exec.Command("ffmpeg", args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 
 	// Direct ffmpeg progress output
 	cmd.Stderr = fflogger
@@ -57,31 +66,69 @@ func StartFeed (streamid int, args ...string) (*Feed, error) {
 		done <- cmd.Wait()
 	}()
 
+	// Additional communication channels
+	stopped := make (chan struct{}, 1)
+	voluntaryStop := make (chan bool, 1)
+
 	feed := Feed{
 		proc: cmd,
 		done: done,
+		stopped: stopped,
+		voluntaryStop: voluntaryStop,
 		logger: fflogger,
 	}
+
+	// start monitor goroutine
+	go streamMonitor(&feed)
 
 	return &feed, nil
 }
 
-func StopFeed(feed *Feed, timeout time.Duration) error {
-	feed.proc.Process.Signal(syscall.SIGTERM)
-
-	var waitErr error
+// Stream monitor process - restart feeds if stopped unexpectedly
+func streamMonitor(f *Feed) {
+	var procStatus error
+	
 	select {
-	case waitErr = <-feed.done:
-		// receive status from channel and store
-	case <-time.After(timeout): // force kill after timeout
-		feed.proc.Process.Kill()
-		log.Println("Warning: Unresponsive transcode process killed")
-		waitErr = <-feed.done
-	}
+	case <- f.done:
+		// restart logic
+		log.Printf("Restarting feed...")
+		close(f.stopped)
+		
+	case <- f.voluntaryStop:
+		// Stop feed
+		sigtermErr := f.proc.Process.Signal(syscall.SIGTERM)
+		if sigtermErr != nil {
+			log.Println("WARNING: Error on SIGTERM attempt, ", sigtermErr)
+		}
 
+		select {
+		case procStatus = <- f.done:
+			log.Println("Feed stopped with code ", procStatus)
+			close(f.stopped)
+		case <- time.After(terminateTimeoutMil):
+			sigkillErr := f.proc.Process.Kill()
+
+			if sigkillErr != nil {
+				log.Println("WARNING: Error on SIGKILL attempt, ", sigkillErr)
+			} else {
+				log.Println("Warning: Unresponsive transcode process killed")
+			}
+
+			<- f.done
+			close(f.stopped)
+		}
+	}
+}
+
+func StopFeed(feed *Feed) error {
+	// set voluntary stop flag
+	log.Println("Sending stop signal...")
+	feed.voluntaryStop <- true
+
+	<- feed.stopped
 	if err := feed.logger.Close(); err != nil {
 		log.Println("Error closing feed logger: ", err)
 	}
 
-	return waitErr
+	return nil
 }

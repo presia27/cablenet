@@ -18,7 +18,6 @@ type StreamState struct {
 	transcoder		*transcode.Feed
 }
 
-const terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
 var ffparams utilities.FFoptions				// default ffmpeg options
 
 var streamdata []*StreamState						// metadata and reference to the process transcoding an active feed
@@ -73,8 +72,10 @@ func stopStream(s *StreamState) error {
 		return fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
 
-	err := transcode.StopFeed(s.transcoder, terminateTimeoutMil)
-	log.Println("Stopped feed with code ", err)
+	err := transcode.StopFeed(s.transcoder)
+	if (err != nil) {
+		return err
+	}
 
 	s.transcoder = nil
 
