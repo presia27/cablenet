@@ -55,13 +55,20 @@ func startStream(s *StreamState) error {
 		return err
 	}
 
-	feed, err := transcode.StartFeed(s.metadata.ChannelNum, ffstring...)
+	feed, chanFail, err := transcode.StartFeed(s.metadata.ChannelNum, ffstring...)
 	if err != nil {
 		return err
 	}
 
 	// Set transcoder struct field to active feed
 	s.transcoder = feed
+
+	// automatically remove transcoder pointer if the ffmpeg fails to load
+	go func() {
+		err := <- chanFail
+		log.Printf("Failed to load/reload channel %d, status: %s", s.metadata.ChannelNum, err)
+		s.transcoder = nil
+	}()
 
 	return nil
 }
