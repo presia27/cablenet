@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"sync"
 	"syscall"
 	"time"
 
@@ -25,6 +26,17 @@ type Feed struct {
 
 	/* Logger */
 	logger *lumberjack.Logger
+
+	/* MUTEX Lock */
+	mu					sync.Mutex
+
+	/* ==} Status information {== */
+	
+	/* Exit status information (of error type) */
+	exitStatus	error
+
+	/* Time that the process exited */
+	exitTime		time.Time
 }
 
 const logPath string = "./log/ffmpeg/"
@@ -43,6 +55,7 @@ func StartFeed (streamid int, args ...string) (*Feed, error) {
 	}
 	
 	cmd := exec.Command("ffmpeg", args...)
+	// Use a separate process group so that ffmpeg doesn't receive SIGINT before the code sends it
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
@@ -89,7 +102,9 @@ func streamMonitor(f *Feed) {
 	var procStatus error
 	
 	select {
-	case <- f.done:
+	case procStatus = <- f.done:
+		setExitStatus(f, procStatus)
+
 		// restart logic
 		log.Printf("Restarting feed...")
 		close(f.stopped)
@@ -103,6 +118,7 @@ func streamMonitor(f *Feed) {
 
 		select {
 		case procStatus = <- f.done:
+			setExitStatus(f, procStatus)
 			log.Println("Feed stopped with code ", procStatus)
 			close(f.stopped)
 		case <- time.After(terminateTimeoutMil):
@@ -114,10 +130,26 @@ func streamMonitor(f *Feed) {
 				log.Println("Warning: Unresponsive transcode process killed")
 			}
 
-			<- f.done
+			procStatus = <- f.done
+			setExitStatus(f, procStatus)
+
 			close(f.stopped)
 		}
 	}
+}
+
+func setExitStatus(f *Feed, e error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.exitStatus = e
+	f.exitTime = time.Now()
+}
+
+func GetExitStatus(f *Feed) (err error, exitTime time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.exitStatus, f.exitTime
 }
 
 func StopFeed(feed *Feed) error {
