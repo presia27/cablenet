@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -14,6 +15,7 @@ import (
 // Information on stream metadata and the transcoding process
 // A nil transcoder means that the feed is not active (no transcoding process running)
 type StreamState struct {
+	mu 						sync.Mutex
 	metadata			utilities.StreamList
 	transcoder		*transcode.Feed
 }
@@ -41,6 +43,9 @@ func loadStreams() {
 // Start a feed by beginning the transcoding process and attaching the transcode feed struct
 // to the StreamState
 func startStream(s *StreamState) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.transcoder != nil {
 		return fmt.Errorf("Stream %d %s already started. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
@@ -66,8 +71,11 @@ func startStream(s *StreamState) error {
 	// automatically remove transcoder pointer if the ffmpeg fails to load
 	go func() {
 		err := <- chanFail
+
+		s.mu.Lock()
 		log.Printf("Failed to load/reload channel %d, status: %s", s.metadata.ChannelNum, err)
 		s.transcoder = nil
+		s.mu.Unlock()
 	}()
 
 	return nil
@@ -75,6 +83,9 @@ func startStream(s *StreamState) error {
 
 // Stop a running feed by stopping the transcoding process and removing the transcode feed struct
 func stopStream(s *StreamState) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.transcoder == nil {
 		return fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
@@ -91,11 +102,9 @@ func stopStream(s *StreamState) error {
 
 func stopAllStreams() {
 	for _, f := range streamdata {
-		if f.transcoder != nil {
-			err := stopStream(f)
-			if err != nil {
-				log.Println("Error while stopping feed: ", err)
-			}
+		err := stopStream(f)
+		if err != nil {
+			log.Println(err)
 		}
 	}
 }
@@ -114,23 +123,6 @@ func main() {
 			}
 		}
 	}
-
-	// input loop for testing
-	// var cmd string;
-	// for {
-	// 	fmt.Println("\nCablenet // Press x to exit")
-	// 	fmt.Print("Enter command: ")
-	// 	fmt.Scan(&cmd)
-	// 	fmt.Println("Executing ", cmd)
-
-	// 	if cmd == "x" {
-	// 		// stop feed
-	// 		stopAllStreams()
-
-	// 		fmt.Println("Goodbye!")
-	// 		break
-	// 	}
-	// }
 
 	fmt.Println("\n/// Cablenet ///")
 

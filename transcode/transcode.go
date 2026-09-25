@@ -49,7 +49,7 @@ type Feed struct {
 }
 
 const logPath string = "./log/ffmpeg/"
-const terminateTimeoutMil time.Duration = time.Duration(2000) * time.Millisecond
+const terminateTimeoutMil time.Duration = time.Duration(4000) * time.Millisecond
 const retryMaxCount int = 6;
 const retryInterval time.Duration = time.Duration(1) * time.Minute
 
@@ -128,18 +128,26 @@ func streamMonitor(f *Feed) {
 	select {
 	case procStatus = <- f.done:
 		time.Sleep(500 * time.Millisecond) // add delay between retries
-		
+
 		retryNum := updateRetryCount(f)
 		if retryNum > retryMaxCount {
 			f.failed <- procStatus
 			setExitStatus(f, procStatus)
 			close(f.stopped)
+			if err := f.logger.Close(); err != nil {
+				log.Println("Error closing feed logger: ", err)
+			}
+
 		} else {
 			// restart logic
 			log.Printf("Attempt %d // Restarting feed", retryNum)
 			cmd, err := startFeedProc(f.logger, f.proc.Args[1:]...)
 			if err != nil {
-				log.Println(err)
+				log.Println("Error restarting feed:", err)
+				// f.failed <- err
+				// setExitStatus(f, err)
+				// close(f.stopped)
+				return
 			}
 
 			go func() {
