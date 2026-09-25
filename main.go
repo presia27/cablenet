@@ -126,16 +126,27 @@ func main() {
 
 	fmt.Println("\n/// Cablenet ///")
 
-	sig := make(chan os.Signal, 1)
+	sig := make(chan os.Signal, 2)
 	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
 
 	<- sig
 	// Shutdown procedure
 	fmt.Println("Shutting down streams...")
 	time.Sleep(200 * time.Millisecond) // sleep to avoid ffmpeg immediate exit from multiple interrupts
-	stopAllStreams()
+	
+	shutdownDone := make (chan struct{})
+	go func() {
+		stopAllStreams()
+		close(shutdownDone)
+	}()
 
-	fmt.Println("Goodbye!")
+	select {
+	case <- shutdownDone:
+		fmt.Println("Goodbye!")
+	case <- sig:
+		fmt.Println("Immediate exit requested from second signal. Check for running ffmpeg processes manually as they may have been abandoned by this abort.")
+		os.Exit(1)
+	}
 	
 }
 
