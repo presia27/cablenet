@@ -13,13 +13,13 @@ import (
 
 type Feed struct {
 	/* Reference to the running process */
-	proc		*exec.Cmd
+	proc *exec.Cmd
 
 	/* Exit status of the process itself */
-	done		chan error
+	done chan error
 
 	/* Error information if the feed fails after trying/retrying to start */
-	failed	chan error
+	failed chan error
 
 	/* Additional status indicator after the process exits; channel closes when termination is complete */
 	stopped chan struct{}
@@ -31,31 +31,32 @@ type Feed struct {
 	logger *lumberjack.Logger
 
 	/* MUTEX Lock */
-	mu					sync.Mutex
+	mu sync.Mutex
 
 	/* ==} Status information {== */
-	
+
 	/* Exit status information (of error type) */
-	exitStatus	error
+	exitStatus error
 
 	/* Time that the process exited */
-	exitTime		time.Time
+	exitTime time.Time
 
 	/* Number of attempted restarts in a fixed period */
-	retryCount	int
+	retryCount int
 
 	/* Timestamp of the last retry attempt */
-	retryTime		time.Time
+	retryTime time.Time
 }
 
 const logPath string = "./log/ffmpeg/"
 const terminateTimeoutMil time.Duration = time.Duration(4000) * time.Millisecond
-const retryMaxCount int = 6;
+const retryMaxCount int = 6
 const retryInterval time.Duration = time.Duration(1) * time.Minute
 
-func startFeedProc (fflogger *lumberjack.Logger, args ...string) (*exec.Cmd, error) {
+func startFeedProc(fflogger *lumberjack.Logger, args ...string) (*exec.Cmd, error) {
 	cmd := exec.Command("ffmpeg", args...)
 	// Use a separate process group so that ffmpeg doesn't receive SIGINT before the code sends it
+	// "Setpgid" does not work on Windows, UNIX okay
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
 	}
@@ -75,44 +76,44 @@ func startFeedProc (fflogger *lumberjack.Logger, args ...string) (*exec.Cmd, err
 
 // streamid - provide a unique id number to identify the stream (mostly for logging purposes).
 // args - ffmpeg transcoding arguments.
-func StartFeed (streamid int, args ...string) (*Feed, chan error, error) {
+func StartFeed(streamid int, args ...string) (*Feed, chan error, error) {
 	logName := fmt.Sprintf("transcode_stream%d.log", streamid)
 	fflogger := &lumberjack.Logger{
-		Filename:		logPath + logName,
-		MaxSize:		25,		// mbps before rotating
-		MaxBackups:	10,		// number of old files to keep
-		MaxAge:			14,		// days
-		Compress:		true,	// gzip rotated files
+		Filename:   logPath + logName,
+		MaxSize:    25,   // mbps before rotating
+		MaxBackups: 10,   // number of old files to keep
+		MaxAge:     14,   // days
+		Compress:   true, // gzip rotated files
 	}
 
 	cmd, err := startFeedProc(fflogger, args...)
 	if err != nil {
 		log.Println(err)
-	  fflogger.Close()
-	  return nil, nil, err
+		fflogger.Close()
+		return nil, nil, err
 	}
 	log.Println("Started ffmpeg process")
 
 	// Claude: give Wait() to a goroutine
-	done := make (chan error, 1)
+	done := make(chan error, 1)
 	go func() {
 		done <- cmd.Wait()
 	}()
 
 	// Additional communication channels
-	failed := make (chan error, 1)
-	stopped := make (chan struct{}, 1)
-	voluntaryStop := make (chan bool, 1)
+	failed := make(chan error, 1)
+	stopped := make(chan struct{}, 1)
+	voluntaryStop := make(chan bool, 1)
 
 	feed := Feed{
-		proc: cmd,
-		done: done,
-		failed: failed,
-		stopped: stopped,
+		proc:          cmd,
+		done:          done,
+		failed:        failed,
+		stopped:       stopped,
 		voluntaryStop: voluntaryStop,
-		logger: fflogger,
-		retryCount: 0,
-		retryTime: time.Now(),
+		logger:        fflogger,
+		retryCount:    0,
+		retryTime:     time.Now(),
 	}
 
 	// start monitor goroutine
@@ -124,9 +125,9 @@ func StartFeed (streamid int, args ...string) (*Feed, chan error, error) {
 // Stream monitor process - restart feeds if stopped unexpectedly
 func streamMonitor(f *Feed) {
 	var procStatus error
-	
+
 	select {
-	case procStatus = <- f.done:
+	case procStatus = <-f.done:
 		time.Sleep(500 * time.Millisecond) // add delay between retries
 
 		retryNum := updateRetryCount(f)
@@ -160,9 +161,8 @@ func streamMonitor(f *Feed) {
 			// ...must restart the streamMonitor
 			go streamMonitor(f)
 		}
-		
-		
-	case <- f.voluntaryStop:
+
+	case <-f.voluntaryStop:
 		// Stop feed
 		sigtermErr := f.proc.Process.Signal(syscall.SIGTERM)
 		if sigtermErr != nil {
@@ -170,11 +170,11 @@ func streamMonitor(f *Feed) {
 		}
 
 		select {
-		case procStatus = <- f.done:
+		case procStatus = <-f.done:
 			setExitStatus(f, procStatus)
 			log.Println("Feed stopped with code ", procStatus)
 			close(f.stopped)
-		case <- time.After(terminateTimeoutMil):
+		case <-time.After(terminateTimeoutMil):
 			sigkillErr := f.proc.Process.Kill()
 
 			if sigkillErr != nil {
@@ -183,7 +183,7 @@ func streamMonitor(f *Feed) {
 				log.Println("Warning: Unresponsive transcode process killed")
 			}
 
-			procStatus = <- f.done
+			procStatus = <-f.done
 			setExitStatus(f, procStatus)
 
 			close(f.stopped)
@@ -225,7 +225,7 @@ func StopFeed(feed *Feed) error {
 	log.Println("Sending stop signal...")
 	feed.voluntaryStop <- true
 
-	<- feed.stopped
+	<-feed.stopped
 	if err := feed.logger.Close(); err != nil {
 		log.Println("Error closing feed logger: ", err)
 	}
