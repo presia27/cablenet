@@ -33,12 +33,20 @@ type FFoptions struct {
 	Vcodec					string	`json:"vcodec"`
 	Vprofile				string	`json:"vprofile"`
 	Preset					string	`json:"preset"`
+	Tune						string	`json:"tune"` // only works on mpeg types, use "" if not using h264, 265, mpeg2
 	DefaultVBitrate	int			`json:"defaultvbitratekb"`
+	Gop							int			`json:"gop"`
+	KeyIntMin				int			`json:"keyintmin"`
+	SceneChangeThresh	int		`json:"scenechangethreshold"`
 	PixFmt					string	`json:"pixfmt"`
 	ColorFmt				string	`json:"colorfmt"`
 	ColorRange			string	`json:"colorrange"`
 	Acodec					string	`json:"acodec"`
 	DefaultABitrate	int			`json:"defaultabitratekb"`
+	HlsTime					int			`json:"hlstime"`
+	HlsListSize			int			`json:"hlslistsize"`
+	HlsFlags				int			`json:"hlsflags"`
+	SegmentType			int			`json:"segmenttype"`
 }
 
 // f - filename string
@@ -117,6 +125,12 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 	params = append(params, f.Vprofile)
 	params = append(params, "-preset")
 	params = append(params, f.Preset)
+	if f.Vcodec == "libx264" || f.Vcodec == "libx265" || f.Vcodec == "mpeg2video" {
+		if (f.Tune != "") {
+			params = append(params, "-tune")
+			params = append(params, f.Tune)
+		}
+	}
 
 	params = append(params, "-b:v")
 	var vbitrate int
