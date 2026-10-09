@@ -139,3 +139,12 @@ func (sc *StreamControl) Autostart() {
 		}
 	}
 }
+
+// Print the ffmpeg command that will be used on enabled streams
+func (sc *StreamControl) PrintFFparams() {
+	for i := 0; i < len(sc.streamdata); i++ {
+		if sc.streamdata[i].metadata.Enabled {
+			fmt.Println(utilities.BuildFFparams(sc.streamdata[i].metadata, sc.ffparams))
+		}
+	}
+}

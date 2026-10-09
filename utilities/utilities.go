@@ -45,8 +45,8 @@ type FFoptions struct {
 	DefaultABitrate	int			`json:"defaultabitratekb"`
 	HlsTime					int			`json:"hlstime"`
 	HlsListSize			int			`json:"hlslistsize"`
-	HlsFlags				int			`json:"hlsflags"`
-	SegmentType			int			`json:"segmenttype"`
+	HlsFlags				string	`json:"hlsflags"`
+	SegmentType			string	`json:"segmenttype"`
 }
 
 // f - filename string
@@ -143,6 +143,14 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 
 	params = append(params, "-pix_fmt")
 	params = append(params, f.PixFmt)
+
+	params = append(params, "-g")
+	params = append(params, strconv.Itoa(f.Gop))
+	params = append(params, "-keyint_min")
+	params = append(params, strconv.Itoa(f.KeyIntMin))
+	params = append(params, "-sc_threshold")
+	params = append(params, strconv.Itoa(f.SceneChangeThresh))
+
 	params = append(params, "-colorspace")
 	params = append(params, f.ColorFmt)
 	params = append(params, "-color_primaries")
@@ -163,8 +171,29 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 	}
 	params = append(params, strconv.Itoa(abitrate) + "k")
 
-	// Output (fix for proper output later)
-	params = append(params, fmt.Sprintf("stream-ch%d-%s.mp4", s.ChannelNum, s.Name))
+	// HLS params
+	params = append(params, "-f")
+	params = append(params, "hls")
+	params = append(params, "-hls_time")
+	params = append(params, strconv.Itoa(f.HlsTime))
+	params = append(params, "-hls_list_size")
+	params = append(params, strconv.Itoa(f.HlsListSize))
+	params = append(params, "-hls_flags")
+	params = append(params, f.HlsFlags)
+	params = append(params, "-hls_segment_type")
+	params = append(params, f.SegmentType)
+	params = append(params, "-hls_segment_filename")
+
+	var segext string
+	if f.SegmentType == "fmp4" {
+		segext = ".m4s"
+	} else {
+		segext = ".ts"
+	}
+	params = append(params, "./hls/stream" + strconv.Itoa(s.ChannelNum) + "-%04d" + segext)
+
+	// Output
+	params = append(params, fmt.Sprintf("./hls/stream-ch%d-%s.m3u8", s.ChannelNum, s.Name))
 
 	return params, nil
 }
