@@ -3,6 +3,7 @@
   "vprofile": "main",
   "preset": "veryfast",
   "tune": "zerolatency",
+  "deintfilter": "yadif=1",
   "defaultvbitratekb": 2048,
   "gop": 60,
   "keyintmin": 60,

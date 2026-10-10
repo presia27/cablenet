@@ -34,6 +34,7 @@ type FFoptions struct {
 	Vprofile				string	`json:"vprofile"`
 	Preset					string	`json:"preset"`
 	Tune						string	`json:"tune"` // only works on mpeg types, use "" if not using h264, 265, mpeg2
+	DeintFilter			string	`json:"deintfilter"`
 	DefaultVBitrate	int			`json:"defaultvbitratekb"`
 	Gop							int			`json:"gop"`
 	KeyIntMin				int			`json:"keyintmin"`
@@ -130,6 +131,11 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 			params = append(params, "-tune")
 			params = append(params, f.Tune)
 		}
+	}
+
+	if s.Deinterlace {
+		params = append(params, "-vf")
+		params = append(params, f.DeintFilter)
 	}
 
 	params = append(params, "-b:v")
