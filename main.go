@@ -24,7 +24,7 @@ func main() {
 	// File Server
 	fileServer := http.FileServer(http.Dir(hlsDir))
 
-	s := &http.Server{
+	httpFileServ := &http.Server{
 		Addr:			":4000",
 		Handler:	fileServer,
 		ReadTimeout:	10 * time.Second,
@@ -33,11 +33,14 @@ func main() {
 
 	go func() {
 		log.Println("Starting file server")
-		err := s.ListenAndServe()
+		err := httpFileServ.ListenAndServe()
 		if err != nil {
 			log.Println(err)
 		}
 	}()
+
+	// Control Server
+	
 
 	fmt.Println("\n/// Cablenet ///")
 
@@ -55,7 +58,7 @@ func main() {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := s.Shutdown(ctx); err != nil {
+		if err := httpFileServ.Shutdown(ctx); err != nil {
 			log.Println("Server forced to shutdown", err)
 		}
 

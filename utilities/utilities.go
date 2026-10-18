@@ -24,6 +24,8 @@ type StreamList struct {
 	Overwrite				bool		`json:"overwrite"`
 	Vbitrate				int			`json:"vbitrate_kb"`
 	Abitrate				int			`json:"abitrate_kb"`
+	Achannels				int			`json:"achannels"`
+	AmatrixEncode		bool		`json:"amatrixencode"`
 	Deinterlace			bool		`json:"deinterlace"`
 	AutostartEncode	bool		`json:"autostart_encode"`
 	FFmpegOptions		any			`json:"ffmpeg_options"`
@@ -43,6 +45,8 @@ type FFoptions struct {
 	ColorFmt				string	`json:"colorfmt"`
 	ColorRange			string	`json:"colorrange"`
 	Acodec					string	`json:"acodec"`
+	AsampleRate			int			`json:"asamplerate"`
+	AmatrixEncode		string	`json:"amatrixencode"`
 	DefaultABitrate	int			`json:"defaultabitratekb"`
 	HlsTime					int			`json:"hlstime"`
 	HlsListSize			int			`json:"hlslistsize"`
@@ -176,6 +180,14 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 		abitrate = f.DefaultABitrate
 	}
 	params = append(params, strconv.Itoa(abitrate) + "k")
+	params = append(params, "-ac")
+	params = append(params, strconv.Itoa(s.Achannels))
+	params = append(params, "-ar")
+	params = append(params, strconv.Itoa(f.AsampleRate))
+	if s.AmatrixEncode {
+		params = append(params, "-af")
+		params = append(params, "aresample=matrix_encoding=" + f.AmatrixEncode)
+	}
 
 	// HLS params
 	params = append(params, "-f")
