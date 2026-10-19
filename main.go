@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cablenet/servercontrol"
 	"cablenet/streamcontrol"
 	"context"
 	"fmt"
@@ -40,7 +41,22 @@ func main() {
 	}()
 
 	// Control Server
-	
+	apiServMux := servercontrol.NewMux(sc)
+
+	ctlApiServ := &http.Server{
+		Addr:				":4001",
+		Handler: 		apiServMux,
+		ReadTimeout:	10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+
+	go func() {
+		log.Println("Starting API control server")
+		err := ctlApiServ.ListenAndServe()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 
 	fmt.Println("\n/// Cablenet ///")
 
@@ -59,7 +75,11 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := httpFileServ.Shutdown(ctx); err != nil {
-			log.Println("Server forced to shutdown", err)
+			log.Println("File server forced to shutdown", err)
+		}
+
+		if err := ctlApiServ.Shutdown(ctx); err != nil {
+			log.Println("API control server forced to shutdown")
 		}
 
 		close(shutdownDone)

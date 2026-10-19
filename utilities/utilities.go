@@ -151,6 +151,13 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 	}
 	params = append(params, strconv.Itoa(vbitrate) + "k")
 
+	// Set video maxrate and buffer size to 1.5 times the desired rate (buffer of 1 second)
+	maxrate := strconv.Itoa(int(float64(vbitrate) * 1.5)) + "k"
+	params = append(params, "-maxrate")
+	params = append(params, maxrate)
+	params = append(params, "-bufsize")
+	params = append(params, maxrate)
+
 	params = append(params, "-pix_fmt")
 	params = append(params, f.PixFmt)
 
