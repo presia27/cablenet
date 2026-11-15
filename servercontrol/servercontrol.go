@@ -83,7 +83,7 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 	// Validate request (if the API were bigger, it would probably be better to have proper middleware)
 	if reqerr != nil {
 		responseData := FeedApiError{
-			Code: "Error",
+			Code: "invalid_channel_id",
 			Message: reqerr.Error(),
 		}
 
@@ -95,7 +95,7 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 		metadata, err := scInstance.GetMetadataByChannel(reqid)
 		if err != nil {
 			responseData := FeedApiError{
-				Code: "Error",
+				Code: "feed_not_found",
 				Message: err.Error(),
 			}
 			w.Header().Set("Content-Type", "application/json")

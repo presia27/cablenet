@@ -71,29 +71,30 @@ func (sc *StreamControl) LoadStreams(filename string) {
 
 // Start a feed by beginning the transcoding process and attaching the transcode feed struct
 // to the StreamState
-func (sc *StreamControl) startStream(s *StreamState) error {
+// Returns (1) error code and (2) error description
+func (sc *StreamControl) startStream(s *StreamState) (error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.exitFromFailure = false
 
 	if s.transcoder != nil {
-		return fmt.Errorf("Stream %d %s already started. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
+		return errors.New("feed_already_started"), fmt.Errorf("Stream %d %s already started. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
 
 	if !s.metadata.Enabled {
-		return fmt.Errorf("Stream %d %s is disabled and cannot be started.", s.metadata.ChannelNum, s.metadata.Name)
+		return errors.New("feed_disabled"), fmt.Errorf("Stream %d %s is disabled and cannot be started.", s.metadata.ChannelNum, s.metadata.Name)
 	}
 
 	// build ffmpeg command
 	ffstring, err := utilities.BuildFFparams(s.metadata, sc.ffparams)
 	if err != nil {
-		return err
+		return errors.New("internal_error"), err
 	}
 
 	feed, chanFail, err := transcode.StartFeed(s.metadata.ChannelNum, ffstring...)
 	if err != nil {
-		return err
+		return errors.New("internal_error"), err
 	}
 
 	// Set transcoder struct field to active feed
@@ -110,7 +111,7 @@ func (sc *StreamControl) startStream(s *StreamState) error {
 		s.mu.Unlock()
 	}()
 
-	return nil
+	return nil, nil
 }
 
 // Stop a running feed by stopping the transcoding process and removing the transcode feed struct
@@ -146,12 +147,30 @@ func (sc *StreamControl) StopAllStreams() {
 func (sc *StreamControl) Autostart() {
 	for i := 0; i < len(sc.streamdata); i++ {
 		if sc.streamdata[i].metadata.Enabled && sc.streamdata[i].metadata.AutostartEncode {
-			err := sc.startStream(sc.streamdata[i])
+			_, err := sc.startStream(sc.streamdata[i])
 			if err != nil {
 				log.Println("Error starting stream: ", err)
 			}
 		}
 	}
+}
+
+// start stream identified by the given channel number
+// returns (1) an error code and (2) error description
+func (sc *StreamControl) StartChannelWithId(ch int) (error, error) {
+	for i := 0; i < len(sc.streamdata); i++ {
+		// find channel
+		if ch == sc.streamdata[i].metadata.ChannelNum  {
+			errcode, errdesc := sc.startStream(sc.streamdata[i])
+			if errcode != nil || errdesc != nil {
+				return errcode, errdesc
+			}
+
+			// if no error occurred, return nil, indicating a successful start
+			return nil, nil
+		}
+	}
+	return errors.New("feed_not_found"), errors.New("Feed not found")
 }
 
 // Print the ffmpeg command that will be used on enabled streams
