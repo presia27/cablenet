@@ -34,7 +34,6 @@ type Feed struct {
 	mu sync.Mutex
 
 	/* ==} Status information {== */
-
 	/* Exit status information (of error type) */
 	exitStatus error
 

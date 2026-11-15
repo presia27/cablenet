@@ -54,6 +54,8 @@ type FFoptions struct {
 	SegmentType			string	`json:"segmenttype"`
 }
 
+const fileNameString string = "stream-ch%d-%s.m3u8"
+
 // f - filename string
 // d - destination struct
 func LoadJsonFile(f string, d any) {
@@ -100,6 +102,10 @@ func GetStreamListInfo(streams []StreamList) string {
 	}
 
 	return sb.String()
+}
+
+func (strlist *StreamList) GetPlaylistUrl() string {
+	return fmt.Sprintf(fileNameString, strlist.ChannelNum, strlist.Name)
 }
 
 func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
@@ -218,7 +224,8 @@ func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
 	params = append(params, "./hls/stream" + strconv.Itoa(s.ChannelNum) + "-%04d" + segext)
 
 	// Output
-	params = append(params, fmt.Sprintf("./hls/stream-ch%d-%s.m3u8", s.ChannelNum, s.Name))
+	playlistHref := "./hls/" + s.GetPlaylistUrl()
+	params = append(params, playlistHref)
 
 	return params, nil
 }

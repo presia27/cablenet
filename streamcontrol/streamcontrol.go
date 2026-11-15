@@ -3,6 +3,7 @@ package streamcontrol
 import (
 	"cablenet/transcode"
 	"cablenet/utilities"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -10,12 +11,22 @@ import (
 
 const ffconfigfile string = "ffmpegconf.json"
 
+// Valid status types for each stream
+type StreamStatus string
+const (
+	Stopped StreamStatus = "stopped"
+	Started	StreamStatus = "started"
+	Failed	StreamStatus = "failed"
+	Unknown	StreamStatus = "unknown"
+)
+
 // Information on stream metadata and the transcoding process
 // A nil transcoder means that the feed is not active (no transcoding process running)
 type StreamState struct {
 	mu         sync.Mutex
 	metadata   utilities.StreamList
 	transcoder *transcode.Feed
+	exitFromFailure		bool
 }
 
 // Parameters for the stream controller
@@ -64,6 +75,8 @@ func (sc *StreamControl) startStream(s *StreamState) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.exitFromFailure = false
+
 	if s.transcoder != nil {
 		return fmt.Errorf("Stream %d %s already started. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
@@ -93,6 +106,7 @@ func (sc *StreamControl) startStream(s *StreamState) error {
 		s.mu.Lock()
 		log.Printf("Failed to load/reload channel %d, status: %s", s.metadata.ChannelNum, err)
 		s.transcoder = nil
+		s.exitFromFailure = true
 		s.mu.Unlock()
 	}()
 
@@ -147,4 +161,40 @@ func (sc *StreamControl) PrintFFparams() {
 			fmt.Println(utilities.BuildFFparams(sc.streamdata[i].metadata, sc.ffparams))
 		}
 	}
+}
+
+func (sc *StreamControl) GetMetadataByChannel(ch int) (utilities.StreamList, error) {
+	for i := 0; i < len(sc.streamdata); i++ {
+		if sc.streamdata[i].metadata.ChannelNum == ch {
+			return sc.streamdata[i].metadata, nil
+		}
+	}
+	return utilities.StreamList{}, errors.New("Unable to find channel")
+}
+
+func (sc *StreamControl) GetStreamStatus(ch int) (StreamStatus, error) {
+	for i := 0; i < len(sc.streamdata); i++ {
+		if sc.streamdata[i].metadata.ChannelNum == ch {
+			if sc.streamdata[i].transcoder != nil {
+				return Started, nil
+			} else {
+				if sc.streamdata[i].exitFromFailure {
+					return Failed, nil
+				} else {
+					return Stopped, nil
+				}
+			}
+		}
+	}
+	return Unknown, errors.New("Unable to find channel")
+}
+
+func (sc *StreamControl) GetAllMetadata() ([]utilities.StreamList) {
+	var metaList []utilities.StreamList
+
+	for i := 0; i < len(sc.streamdata); i++ {
+		metaList = append(metaList, sc.streamdata[i].metadata)
+	}
+
+	return metaList
 }

@@ -9,13 +9,6 @@ import (
 
 var scInstance *streamcontrol.StreamControl;
 
-type StreamStatus string
-const (
-	Stopped StreamStatus = "stopped"
-	Started	StreamStatus = "started"
-	Failed	StreamStatus = "failed"
-)
-
 type FeedInfo struct {
 	ChannelNum			int			`json:"channel_num"`
 	ChannelDisplay	string	`json:"channel_display"`
@@ -25,7 +18,7 @@ type FeedInfo struct {
 	Owner						string	`json:"owner"`
 	Enabled					bool		`json:"enabled"`
 
-	Status					StreamStatus	`json:"status"`
+	Status					streamcontrol.StreamStatus	`json:"status"`
 	Playlist			string	`json:"playlist"`
 }
 
@@ -58,11 +51,30 @@ func NewMux(sc *streamcontrol.StreamControl) *http.ServeMux {
 }
 
 func getAllFeeds(w http.ResponseWriter, r *http.Request) {
+	metadata := scInstance.GetAllMetadata()
+	var feedInfo []FeedInfo
 
+	for i := 0; i < len(metadata); i++ {
+		streamStatus, _ := scInstance.GetStreamStatus(metadata[i].ChannelNum)
+
+		f := FeedInfo{
+			ChannelNum: metadata[i].ChannelNum,
+			ChannelDisplay: metadata[i].ChannelDisplay,
+			Name: metadata[i].Name,
+			Network: metadata[i].Network,
+			IconImg: metadata[i].IconImg,
+			Owner: metadata[i].Owner,
+			Enabled: metadata[i].Enabled,
+			Status: streamStatus,
+			Playlist: metadata[i].GetPlaylistUrl(),
+		}
+
+		feedInfo = append(feedInfo, f)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]any{"whatis": "all_feeds"})
+	json.NewEncoder(w).Encode(feedInfo)
 }
 
 func getFeed(w http.ResponseWriter, r *http.Request) {
