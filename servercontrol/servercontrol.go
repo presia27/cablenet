@@ -80,6 +80,7 @@ func getAllFeeds(w http.ResponseWriter, r *http.Request) {
 func getFeed(w http.ResponseWriter, r *http.Request) {
 	reqid, reqerr := strconv.Atoi(r.PathValue("id"))
 
+	// Validate request (if the API were bigger, it would probably be better to have proper middleware)
 	if reqerr != nil {
 		responseData := FeedApiError{
 			Code: "Error",
@@ -90,9 +91,36 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(responseData)
 	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{"whatis": strconv.Itoa(reqid)})
+		// find channel, if it exists
+		metadata, err := scInstance.GetMetadataByChannel(reqid)
+		if err != nil {
+			responseData := FeedApiError{
+				Code: "Error",
+				Message: err.Error(),
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(responseData)
+
+		} else {
+			streamStatus, _ := scInstance.GetStreamStatus(metadata.ChannelNum)
+
+			f := FeedInfo{
+				ChannelNum: metadata.ChannelNum,
+				ChannelDisplay: metadata.ChannelDisplay,
+				Name: metadata.Name,
+				Network: metadata.Network,
+				IconImg: metadata.IconImg,
+				Owner: metadata.Owner,
+				Enabled: metadata.Enabled,
+				Status: streamStatus,
+				Playlist: metadata.GetPlaylistUrl(),
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(f)
+		}
 	}
 }
 
