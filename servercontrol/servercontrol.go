@@ -125,11 +125,43 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestStart(w http.ResponseWriter, r *http.Request) {
+	reqid, reqerr := strconv.Atoi(r.PathValue("id"))
+	if reqerr != nil {
+		responseData := FeedApiError{
+			Code: "invalid_channel_id",
+			Message: reqerr.Error(),
+		}
 
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseData)
+	} else {
+		errcode, errdesc := scInstance.StartChannelWithId(reqid)
+		if errcode != nil || errdesc != nil {
+			// The main errors are going to be the conflict
+			if errcode.Error() == "feed_not_found" || errcode.Error() == "feed_already_started" {
+				responseData := FeedApiError{
+					Code: errcode.Error(),
+					Message: errdesc.Error(),
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusConflict)
+				json.NewEncoder(w).Encode(responseData)
+			} else {
+				responseData := FeedApiError{
+					Code: errcode.Error(),
+					Message: "An internal error occurred. Please contact the administrator",
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(responseData)
+			}
+		}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
-	json.NewEncoder(w).Encode(map[string]any{"todo": "start"})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+		json.NewEncoder(w).Encode(map[string]any{"todo": "start"})
+	}
 }
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
