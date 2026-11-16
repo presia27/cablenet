@@ -115,28 +115,29 @@ func (sc *StreamControl) startStream(s *StreamState) (error, error) {
 }
 
 // Stop a running feed by stopping the transcoding process and removing the transcode feed struct
-func stopStream(s *StreamState) error {
+// Returns (1) error code and (2) error description
+func stopStream(s *StreamState) (error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.transcoder == nil {
-		return fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
+		return errors.New("feed_already_started"), fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
 
 	err := transcode.StopFeed(s.transcoder)
 	if err != nil {
-		return err
+		return errors.New("internal_error"), err
 	}
 
 	s.transcoder = nil
 
-	return nil
+	return nil, nil
 }
 
 // Stop all running streams
 func (sc *StreamControl) StopAllStreams() {
 	for _, f := range sc.streamdata {
-		err := stopStream(f)
+		_, err := stopStream(f)
 		if err != nil {
 			log.Println(err)
 		}
@@ -160,8 +161,26 @@ func (sc *StreamControl) Autostart() {
 func (sc *StreamControl) StartChannelWithId(ch int) (error, error) {
 	for i := 0; i < len(sc.streamdata); i++ {
 		// find channel
-		if ch == sc.streamdata[i].metadata.ChannelNum  {
+		if ch == sc.streamdata[i].metadata.ChannelNum {
 			errcode, errdesc := sc.startStream(sc.streamdata[i])
+			if errcode != nil || errdesc != nil {
+				return errcode, errdesc
+			}
+
+			// if no error occurred, return nil, indicating a successful start
+			return nil, nil
+		}
+	}
+	return errors.New("feed_not_found"), errors.New("Feed not found")
+}
+
+// stop stream identified by the given channel number
+// returns (1) an error code and (2) an error desription
+func (sc *StreamControl) StopChannelWithId(ch int) (error, error) {
+	for i := 0; i < len(sc.streamdata); i++ {
+		// find channel
+		if ch == sc.streamdata[i].metadata.ChannelNum {
+			errcode, errdesc := stopStream(sc.streamdata[i])
 			if errcode != nil || errdesc != nil {
 				return errcode, errdesc
 			}

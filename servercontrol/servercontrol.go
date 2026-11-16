@@ -174,11 +174,38 @@ func requestStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
+	reqid, reqerr := strconv.Atoi(r.PathValue("id")) // get route param
+	if reqerr != nil {
+		responseData := FeedApiError{
+			Code: "invalid_channel_id",
+			Message: "Channel ID is invalide in type or form",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(responseData)
+	} else {
+		errcode, errdesc := scInstance.StopChannelWithId(reqid)
+		if errcode != nil || errdesc != nil {
+			responseData := FeedApiError{ Code: errcode.Error() }
+			w.Header().Set("Content-Type", "application/json")
+			
+			if errcode.Error() == "feed_not_found" {
+				responseData.Message = errdesc.Error()
+				w.WriteHeader(http.StatusNotFound)
+			} else if errcode.Error() == "feed_already_started" {
+				responseData.Message = errdesc.Error()
+				w.WriteHeader(http.StatusConflict)
+			} else {
+				responseData.Message = "An internal error occurred. Please contact the administrator"
+				w.WriteHeader(http.StatusInternalServerError)
+			}
 
+			json.NewEncoder(w).Encode(responseData)
+			return
+		}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
-	json.NewEncoder(w).Encode(map[string]any{"todo": "stop"})
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func requestRestart(w http.ResponseWriter, r *http.Request) {
