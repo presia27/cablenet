@@ -121,7 +121,7 @@ func stopStream(s *StreamState) (error, error) {
 	defer s.mu.Unlock()
 
 	if s.transcoder == nil {
-		return errors.New("feed_already_started"), fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
+		return errors.New("feed_already_stopped"), fmt.Errorf("Stream %d %s is already stopped. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
 
 	err := transcode.StopFeed(s.transcoder)
