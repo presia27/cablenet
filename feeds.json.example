@@ -1,0 +1,40 @@
+[
+  {
+    "channel_num": 1,
+    "channel_display": "Numeric channel number in text form (e.g. 4A, 5.1)",
+    "name": "Name of Channel",
+    "network": "Network, if applicable",
+    "icon_img": "URL of Icon",
+    "owner": "Content Owner",
+    "feed_url": "URL of the originating feed (any format supported by FFmpeg will do)",
+    "epg_url": "URL of Electronic Program Guide Data",
+    "enabled": true,
+    "overwrite": true,
+    "vbitrate_kb": 3072,
+    "abitrate_kb": 256,
+    "achannels": 2,
+    "amatrixencode": false,
+    "deinterlace": false,
+    "autostart_encode": false,
+    "ffmpeg_options": {}
+  },
+  {
+    "channel_num": 2,
+    "channel_display": "2.1",
+    "name": "Internet Cats 24/7",
+    "network": "Cats of the Internet",
+    "icon_img": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Big_Floppa_and_Justin_2_(cropped).jpg",
+    "owner": "Feline World Domination, Inc.",
+    "feed_url": "/feed/source",
+    "epg_url": "/feed/epg",
+    "enabled": true,
+    "overwrite": true,
+    "vbitrate_kb": 2000,
+    "abitrate_kb": 256,
+    "achannels": 2,
+    "amatrixencode": false,
+    "deinterlace": false,
+    "autostart_encode": false,
+    "ffmpeg_options": {}
+  }
+]

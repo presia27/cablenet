@@ -32,6 +32,8 @@ tmp/
 
 server.log
 
+feeds.json
+
 # Large multimedia files
 *.mp4
 *.mkv
