@@ -144,9 +144,12 @@ func streamMonitor(f *Feed) {
 			cmd, err := startFeedProc(f.logger, f.proc.Args[1:]...)
 			if err != nil {
 				log.Println("Error restarting feed:", err)
-				// f.failed <- err
-				// setExitStatus(f, err)
-				// close(f.stopped)
+				f.failed <- err
+				setExitStatus(f, err)
+				close(f.stopped)
+				if err := f.logger.Close(); err != nil {
+					log.Println("Error closing feed logger: ", err)
+				}
 				return
 			}
 
@@ -186,6 +189,7 @@ func streamMonitor(f *Feed) {
 			setExitStatus(f, procStatus)
 
 			close(f.stopped)
+			close(f.failed)
 		}
 	}
 }

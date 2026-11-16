@@ -76,8 +76,6 @@ func (sc *StreamControl) startStream(s *StreamState) (error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.exitFromFailure = false
-
 	if s.transcoder != nil {
 		return errors.New("feed_already_started"), fmt.Errorf("Stream %d %s already started. No action taken.", s.metadata.ChannelNum, s.metadata.Name)
 	}
@@ -97,12 +95,19 @@ func (sc *StreamControl) startStream(s *StreamState) (error, error) {
 		return errors.New("internal_error"), err
 	}
 
+	// Reset exit from failure status (relevant when the feed failed and needed to be restarted)
+	s.exitFromFailure = false
+
 	// Set transcoder struct field to active feed
 	s.transcoder = feed
 
 	// automatically remove transcoder pointer if the ffmpeg fails to load
 	go func() {
-		err := <-chanFail
+		err, ok := <-chanFail
+
+		if !ok {
+			return // stop was deliberate, stop goroutine
+		}
 
 		s.mu.Lock()
 		log.Printf("Failed to load/reload channel %d, status: %s", s.metadata.ChannelNum, err)
