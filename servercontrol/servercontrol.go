@@ -129,7 +129,7 @@ func requestStart(w http.ResponseWriter, r *http.Request) {
 	if reqerr != nil {
 		responseData := FeedApiError{
 			Code: "invalid_channel_id",
-			Message: reqerr.Error(),
+			Message: "Channel ID is invalid in type or form",
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -138,8 +138,17 @@ func requestStart(w http.ResponseWriter, r *http.Request) {
 	} else {
 		errcode, errdesc := scInstance.StartChannelWithId(reqid)
 		if errcode != nil || errdesc != nil {
-			// The main errors are going to be the conflict
-			if errcode.Error() == "feed_not_found" || errcode.Error() == "feed_already_started" {
+			// The main errors are going to be the conflict.
+			if errcode.Error() == "feed_not_found" {
+				responseData := FeedApiError{
+					Code: errcode.Error(),
+					Message: errdesc.Error(),
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(responseData)
+				return
+			} else if errcode.Error() == "feed_already_started" {
 				responseData := FeedApiError{
 					Code: errcode.Error(),
 					Message: errdesc.Error(),
@@ -147,6 +156,7 @@ func requestStart(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
 				json.NewEncoder(w).Encode(responseData)
+				return
 			} else {
 				responseData := FeedApiError{
 					Code: errcode.Error(),
@@ -155,12 +165,11 @@ func requestStart(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(responseData)
+				return
 			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)
-		json.NewEncoder(w).Encode(map[string]any{"todo": "start"})
 	}
 }
 
