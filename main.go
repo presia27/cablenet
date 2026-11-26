@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cablenet/config"
 	"cablenet/servercontrol"
 	"cablenet/streamcontrol"
 	"context"
@@ -16,6 +17,12 @@ import (
 const hlsDir string = "./hls"
 
 func main() {
+	// Load ENV
+	cfg, err := config.Load(".env")
+	if err != nil {
+		log.Fatal("Configuration error: ", err)
+	}
+
 	// Stream Control System
 	sc := streamcontrol.Default()
 
@@ -26,14 +33,14 @@ func main() {
 	fileServer := http.FileServer(http.Dir(hlsDir))
 
 	httpFileServ := &http.Server{
-		Addr:			":4000",
+		Addr:			fmt.Sprintf(":%d", cfg.FilePort),
 		Handler:	fileServer,
 		ReadTimeout:	10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		log.Println("Starting file server")
+		log.Printf("Starting file server on port %d\n", cfg.FilePort)
 		err := httpFileServ.ListenAndServe()
 		if err != nil {
 			log.Println(err)
@@ -44,14 +51,14 @@ func main() {
 	apiServMux := servercontrol.NewMux(sc)
 
 	ctlApiServ := &http.Server{
-		Addr:				":4001",
+		Addr:				fmt.Sprintf(":%d", cfg.ControlPort),
 		Handler: 		apiServMux,
 		ReadTimeout:	10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		log.Println("Starting API control server")
+		log.Printf("Starting API control server on port %d\n", cfg.ControlPort)
 		err := ctlApiServ.ListenAndServe()
 		if err != nil {
 			log.Println(err)
