@@ -70,16 +70,20 @@ func main() {
 
 	shutdownDone := make(chan struct{})
 	go func() {
-		sc.StopAllStreams()
-
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := httpFileServ.Shutdown(ctx); err != nil {
-			log.Println("File server forced to shutdown", err)
-		}
 
 		if err := ctlApiServ.Shutdown(ctx); err != nil {
 			log.Println("API control server forced to shutdown")
+		}
+
+		sc.StopAllStreams()
+
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel2()
+
+		if err := httpFileServ.Shutdown(ctx2); err != nil {
+			log.Println("File server forced to shutdown", err)
 		}
 
 		close(shutdownDone)
