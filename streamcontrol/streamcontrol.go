@@ -127,6 +127,13 @@ func (sc *StreamControl) startStream(s *StreamState) (error) {
 		}
 
 		s.mu.Lock()
+
+		// Check if the failed feed is the same feed that this monitor is supposed to be monitoring.
+		// If it's not, don't do anything (it may have already been stopped or replaced)
+		if s.transcoder != feed {
+			return
+		}
+
 		log.Printf("Failed to load/reload channel %d, status: %s", s.metadata.ChannelNum, err)
 		s.transcoder = nil
 		s.exitFromFailure = true
