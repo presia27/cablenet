@@ -107,7 +107,7 @@ func (sc *StreamControl) startStream(s *StreamState) (error) {
 	feed, chanFail, err := transcode.StartFeed(s.metadata.ChannelNum, ffstring...)
 	if err != nil {
 		return &FeedError{
-		  "internal_error",
+		  "start_failed",
 			err.Error(),
 		}
 	}
@@ -159,7 +159,7 @@ func stopStream(s *StreamState) (error) {
 	err := transcode.StopFeed(s.transcoder)
 	if err != nil {
 		return &FeedError{
-			"internal_error",
+			"stop_failed",
 			err.Error(),
 		}
 	}

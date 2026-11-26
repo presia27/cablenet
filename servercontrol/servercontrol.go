@@ -42,6 +42,8 @@ var statusForCode = map[string]int {
 	"feed_already_started": 409,
 	"feed_already_stopped": 409,
 	"feed_disabled": 409,
+	"start_failed": 500,
+	"stop_failed": 500,
 }
 
 func writeError(w http.ResponseWriter, err error) {
