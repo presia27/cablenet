@@ -2,8 +2,10 @@ package servercontrol
 
 import (
 	"cablenet/streamcontrol"
+	"embed"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log"
 	"net/http"
 	"strconv"
@@ -72,10 +74,23 @@ func writeError(w http.ResponseWriter, err error) {
 	json.NewEncoder(w).Encode(responseData)
 }
 
+//go:embed web/*
+var webFS embed.FS
+
+func registerUI(mux *http.ServeMux) {
+	sub, err := fs.Sub(webFS, "web")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mux.Handle("GET /", http.FileServer(http.FS(sub)))
+}
+
 func NewMux(sc *streamcontrol.StreamControl) *http.ServeMux {
 	scInstance = sc
 
 	mux := http.NewServeMux()
+
+	registerUI(mux)
 
 	mux.HandleFunc("GET /feeds", getAllFeeds)
 	mux.HandleFunc("GET /feeds/{id}", getFeed)

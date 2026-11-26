@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<!-- 
+
+    ========}   Cablenet Feed Control Panel   {========
+        Cablenet Feed Control Panel
+        Created/Drafted by Claude Sonnet 5.5, modified by Preston Sia
+
+        Author: Claude Sonnet 5.5, Preston Sia
+        Created: 2026-Nov
+
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Control Panel - Cablenet</title>
+<style>
+  [x-cloak] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: #e9ecef;
+    color: #222;
+    font: 12px Arial, helvetica, sans-serif;
+  }
+
+  #header {
+    background: white;
+    border-bottom: 3px solid #b7a57a;
+    color: #000;
+    padding: 10px 16px;
+  }
+  #header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  #page { padding: 14px 16px; max-width: 1100px; }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #9aa3ad;
+    margin-bottom: 12px;
+  }
+  .panel-title {
+    background: #dfe4ea;
+    background: linear-gradient(#f2f4f6, #d3d9e0);
+    border-bottom: 1px solid #9aa3ad;
+    font-weight: bold;
+    padding: 5px 8px;
+  }
+  .panel-body { padding: 8px; }
+
+  /* summary strip */
+  #summary span { margin-right: 18px; }
+  #summary b { font-size: 14px; }
+
+  /* message box */
+  .msg { border: 1px solid; padding: 6px 8px; margin-bottom: 12px; }
+  .msg.error { background: #fdeaea; border-color: #c0392b; color: #7a1c12; }
+  .msg.ok    { background: #eaf6ea; border-color: #3c8d3c; color: #1f5a1f; }
+  .msg a { float: right; color: inherit; cursor: pointer; text-decoration: none; font-weight: bold; }
+
+  /* feed table */
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #b5bcc4; padding: 4px 8px; text-align: left; }
+  th {
+    background: #dfe4ea;
+    background: linear-gradient(#f2f4f6, #d3d9e0);
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: #f4f6f8; }
+  tbody tr:hover { background: #fff8dc; }
+  td.center, th.center { text-align: center; }
+  td.empty { text-align: center; color: #666; padding: 14px; }
+  img.icon { height: 18px; width: auto; vertical-align: middle; margin-right: 6px; border: 0; }
+  .muted { color: #777; }
+
+  /* status labels */
+  .status { font-weight: bold; white-space: nowrap; }
+  .status:before {
+    content: "";
+    display: inline-block;
+    width: 9px; height: 9px;
+    margin-right: 5px;
+    border: 1px solid rgba(0,0,0,.4);
+    vertical-align: -1px;
+  }
+  .status.started { color: #1f6b1f; }
+  .status.started:before { background: #3cb43c; }
+  .status.stopped { color: #555; }
+  .status.stopped:before { background: #aaa; }
+  .status.failed  { color: #a3261a; }
+  .status.failed:before  { background: #d9392b; }
+  .status.unknown { color: #555; }
+  .status.unknown:before { background: #f0a30a; }
+
+  /* buttons */
+  button {
+    font: 11px Verdana, Tahoma, Arial, sans-serif;
+    background: #e6e6e6;
+    background: linear-gradient(#fdfdfd, #d8d8d8);
+    border: 1px solid #7a7a7a;
+    border-radius: 3px;
+    color: #111;
+    cursor: pointer;
+    margin: 0 2px;
+    padding: 3px 12px;
+  }
+  button:hover:not(:disabled) { background: linear-gradient(#fff, #e6e6e6); border-color: #3a6ea5; }
+  button:active:not(:disabled) { background: #d0d0d0; }
+  button:disabled { color: #999; cursor: default; border-color: #bbb; background: #efefef; }
+
+  #toolbar { margin-bottom: 8px; }
+  #toolbar label { margin-left: 14px; }
+  #footer { color: #666; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div id="header"><h1>Feed Control Panel</h1></div>
+
+<div id="page" x-data="dashboard()" x-cloak>
+
+  <!-- messages -->
+  <template x-if="message">
+    <div class="msg" :class="message.type">
+      <a @click="message = null" title="Dismiss">&times;</a>
+      <span x-text="message.text"></span>
+    </div>
+  </template>
+
+  <!-- summary -->
+  <div class="panel">
+    <div class="panel-title">Summary</div>
+    <div class="panel-body" id="summary">
+      <span>Total: <b x-text="counts.total"></b></span>
+      <span>Started: <b x-text="counts.started"></b></span>
+      <span>Stopped: <b x-text="counts.stopped"></b></span>
+      <span>Failed: <b x-text="counts.failed"></b></span>
+    </div>
+  </div>
+
+  <!-- feeds -->
+  <div class="panel">
+    <div class="panel-title">Feeds</div>
+    <div class="panel-body">
+      <div id="toolbar">
+        <button @click="load()" :disabled="loading">Refresh</button>
+        <label><input type="checkbox" x-model="autoRefresh"> Auto-refresh (5s)</label>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="center">Ch.</th>
+            <th>Name</th>
+            <th>Network</th>
+            <th>Owner</th>
+            <th>Status</th>
+            <th>Playlist</th>
+            <th class="center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="feed in feeds" :key="feed.channel_num">
+            <tr>
+              <td class="center" x-text="feed.channel_display"></td>
+              <td>
+                <img class="icon" alt="" :src="feed.icon_img" x-show="feed.icon_img">
+                <span x-text="feed.name"></span>
+                <span class="muted" x-show="!feed.enabled">(disabled)</span>
+              </td>
+              <td x-text="feed.network || '-'"></td>
+              <td x-text="feed.owner || '-'"></td>
+              <td><span class="status" :class="feed.status" x-text="feed.status"></span></td>
+              <td x-text="feed.playlist"></td>
+              <td class="center">
+                <button @click="act(feed, 'start')"
+                        :disabled="isBusy(feed) || !feed.enabled || feed.status === 'started'">Start</button>
+                <button @click="act(feed, 'stop')"
+                        :disabled="isBusy(feed) || feed.status !== 'started'">Stop</button>
+                <span class="muted" x-show="isBusy(feed)">working...</span>
+              </td>
+            </tr>
+          </template>
+
+          <tr x-show="loaded && feeds.length === 0">
+            <td class="empty" colspan="7">No feeds configured.</td>
+          </tr>
+          <tr x-show="!loaded">
+            <td class="empty" colspan="7">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="footer">
+    Last updated: <span x-text="lastUpdated || 'never'"></span>
+  </div>
+</div>
+
+<script>
+  // Plain ES2017: async/await and template literals only. No optional chaining,
+  // nullish coalescing, object spread, Promise.finally, or optional catch binding.
+  function dashboard() {
+    return {
+      feeds: [],
+      busy: {},
+      loaded: false,
+      loading: false,
+      autoRefresh: true,
+      lastUpdated: '',
+      message: null,
+
+      init() {
+        const self = this;
+        this.load();
+        setInterval(function () {
+          if (self.autoRefresh && !document.hidden) { self.load(); }
+        }, 5000);
+      },
+
+      get counts() {
+        const c = { total: this.feeds.length, started: 0, stopped: 0, failed: 0 };
+        this.feeds.forEach(function (f) {
+          if (f.status === 'started') { c.started++; }
+          else if (f.status === 'failed') { c.failed++; }
+          else { c.stopped++; }
+        });
+        return c;
+      },
+
+      isBusy(feed) {
+        return !!this.busy[feed.channel_num];
+      },
+
+      async load() {
+        if (this.loading) { return; } // don't overlap requests
+        this.loading = true;
+        try {
+          const res = await fetch('/feeds', { headers: { 'Accept': 'application/json' } });
+          if (!res.ok) { throw new Error('HTTP ' + res.status); }
+          const data = await res.json();
+          this.feeds = Array.isArray(data) ? data : []; // server may send null for no feeds
+          this.lastUpdated = new Date().toLocaleTimeString();
+        } catch (e) {
+          this.message = { type: 'error', text: 'Unable to load feeds: ' + e.message };
+        } finally {
+          this.loaded = true;
+          this.loading = false;
+        }
+      },
+
+      async act(feed, action) {
+        const id = feed.channel_num;
+        if (this.busy[id]) { return; }
+
+        const label = feed.channel_display + ' ' + feed.name;
+        if (action === 'stop' && !window.confirm('Stop channel ' + label + '?')) { return; }
+
+        this.busy[id] = true;
+        this.message = null;
+
+        try {
+          const res = await fetch('/feeds/' + encodeURIComponent(id) + '/' + action, { method: 'POST' });
+
+          if (res.ok) {
+            this.message = {
+              type: 'ok',
+              text: 'Channel ' + label + (action === 'start' ? ' started.' : ' stopped.')
+            };
+          } else {
+            let body = {};
+            try { body = await res.json(); } catch (e) { /* no JSON body */ }
+            const err = body.error || body; // accept {code,message} or {error:{code,message}}
+            this.message = {
+              type: 'error',
+              text: 'Could not ' + action + ' channel ' + label + ': ' +
+                    (err.message || 'HTTP ' + res.status) + (err.code ? ' (' + err.code + ')' : '')
+            };
+          }
+        } catch (e) {
+          this.message = { type: 'error', text: 'Request failed: ' + e.message };
+        } finally {
+          this.busy[id] = false;
+          await this.load();
+        }
+      }
+    };
+  }
+</script>
+<script defer src="alpine.min.js"></script>
+</body>
+</html>
