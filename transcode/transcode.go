@@ -176,6 +176,7 @@ func streamMonitor(f *Feed) {
 			setExitStatus(f, procStatus)
 			log.Println("Feed stopped with code ", procStatus)
 			close(f.stopped)
+			close(f.failed)
 		case <-time.After(terminateTimeoutMil):
 			sigkillErr := f.proc.Process.Kill()
 
