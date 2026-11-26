@@ -4,6 +4,7 @@ import (
 	"cablenet/streamcontrol"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -50,10 +51,15 @@ func writeError(w http.ResponseWriter, err error) {
 	status, code, msg := 500, "internal_error", "An internal error occurred."
 	var fe *streamcontrol.FeedError
 	if errors.As(err, &fe) {
-		code, msg = fe.Code, fe.Message
+		code = fe.Code
 		s, ok := statusForCode[fe.Code]
 		if ok {
 			status = s
+			if status != 500 {
+				msg = fe.Message
+			} else {
+				log.Printf("API internal error (%s): %s", fe.Code, fe.Message)
+			}
 		}
 	}
 	responseData := FeedApiError{
