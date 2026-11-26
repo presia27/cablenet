@@ -54,7 +54,7 @@ type FFoptions struct {
 	SegmentType			string	`json:"segmenttype"`
 }
 
-const fileNameString string = "stream-ch%d-%s.m3u8"
+const fileNameString string = "stream-ch%d.m3u8"
 
 // f - filename string
 // d - destination struct
@@ -105,7 +105,7 @@ func GetStreamListInfo(streams []StreamList) string {
 }
 
 func (strlist *StreamList) GetPlaylistUrl() string {
-	return fmt.Sprintf(fileNameString, strlist.ChannelNum, strlist.Name)
+	return fmt.Sprintf(fileNameString, strlist.ChannelNum)
 }
 
 func BuildFFparams(s StreamList, f FFoptions) ([]string, error) {
