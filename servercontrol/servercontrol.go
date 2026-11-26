@@ -3,6 +3,7 @@ package servercontrol
 import (
 	"cablenet/streamcontrol"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 )
@@ -34,6 +35,33 @@ type ServerStatus struct {
 type FeedApiError struct {
 	Code			string		`json:"code"`
 	Message		string		`json:"message"`
+}
+
+var statusForCode = map[string]int {
+	"feed_not_found": 404,
+	"feed_already_started": 409,
+	"feed_already_stopped": 409,
+	"feed_disabled": 409,
+}
+
+func writeError(w http.ResponseWriter, err error) {
+	status, code, msg := 500, "internal_error", "An internal error occurred."
+	var fe *streamcontrol.FeedError
+	if errors.As(err, &fe) {
+		code, msg = fe.Code, fe.Message
+		s, ok := statusForCode[fe.Code]
+		if ok {
+			status = s
+		}
+	}
+	responseData := FeedApiError{
+		Code: code,
+		Message: msg,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(responseData)
 }
 
 func NewMux(sc *streamcontrol.StreamControl) *http.ServeMux {
@@ -136,23 +164,9 @@ func requestStart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(responseData)
 	} else {
-		errcode, errdesc := scInstance.StartChannelWithId(reqid)
-		if errcode != nil || errdesc != nil {
-			responseData := FeedApiError{ Code: errcode.Error() }
-			w.Header().Set("Content-Type", "application/json")
-
-			if errcode.Error() == "feed_not_found" {
-				responseData.Message = errdesc.Error()
-				w.WriteHeader(http.StatusNotFound)
-			} else if errcode.Error() == "feed_already_started" {
-				responseData.Message = errdesc.Error()
-				w.WriteHeader(http.StatusConflict)
-			} else {
-				responseData.Message = "An internal error occurred. Please contact the administrator"
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-
-			json.NewEncoder(w).Encode(responseData)
+		err := scInstance.StartChannelWithId(reqid)
+		if err != nil {
+			writeError(w, err)
 			return
 		}
 
@@ -171,23 +185,9 @@ func requestStop(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(responseData)
 	} else {
-		errcode, errdesc := scInstance.StopChannelWithId(reqid)
-		if errcode != nil || errdesc != nil {
-			responseData := FeedApiError{ Code: errcode.Error() }
-			w.Header().Set("Content-Type", "application/json")
-			
-			if errcode.Error() == "feed_not_found" {
-				responseData.Message = errdesc.Error()
-				w.WriteHeader(http.StatusNotFound)
-			} else if errcode.Error() == "feed_already_stopped" {
-				responseData.Message = errdesc.Error()
-				w.WriteHeader(http.StatusConflict)
-			} else {
-				responseData.Message = "An internal error occurred. Please contact the administrator"
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-
-			json.NewEncoder(w).Encode(responseData)
+		err := scInstance.StopChannelWithId(reqid)
+		if err != nil {
+			writeError(w, err)
 			return
 		}
 
